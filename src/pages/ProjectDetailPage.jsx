@@ -8,6 +8,7 @@ import KanbanBoard from '../components/KanbanBoard';
 import CreateTaskModal from '../components/CreateTaskModal';
 import TaskDetailModal from '../components/TaskDetailModal';
 import ProjectChat from '../components/ProjectChat';
+import AIProgressSummary from '../components/AIProgressSummary';
 
 const ProjectDetailPage = () => {
   const { id } = useParams();
@@ -153,6 +154,11 @@ const ProjectDetailPage = () => {
                 </div>
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">{project.title}</h1>
                 <p className="text-gray-600">{project.description}</p>
+                
+                {/* AI Progress Summary Section */}
+                <div className="mt-4">
+                  <AIProgressSummary project={{...project, tasks}} />
+                </div>
               </div>
               
               {/* Team Info */}
@@ -381,6 +387,7 @@ const ProjectDetailPage = () => {
       {showCreateTaskModal && (
         <CreateTaskModal
           projectId={id}
+          projectTitle={project?.title}
           teamMembers={project?.teamMembers || []}
           onClose={() => setShowCreateTaskModal(false)}
           onSuccess={fetchTasks}

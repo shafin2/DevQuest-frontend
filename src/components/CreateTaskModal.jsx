@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { taskService } from '../services/taskService';
+import { aiService } from '../services/aiService';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 
-const CreateTaskModal = ({ onClose, onSuccess, projectId, teamMembers }) => {
+const CreateTaskModal = ({ onClose, onSuccess, projectId, teamMembers, projectTitle }) => {
   const { refreshUser } = useAuth();
   const { showXPNotification, showNotification } = useNotification();
   const [formData, setFormData] = useState({
@@ -17,6 +18,55 @@ const CreateTaskModal = ({ onClose, onSuccess, projectId, teamMembers }) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [aiLoading, setAiLoading] = useState({ title: false, description: false });
+  const [titleSuggestions, setTitleSuggestions] = useState([]);
+
+  const handleAITitleSuggestion = async () => {
+    if (!formData.title.trim()) {
+      setError('Enter some text first to get AI suggestions');
+      return;
+    }
+
+    try {
+      setAiLoading(prev => ({ ...prev, title: true }));
+      const response = await aiService.generateTaskTitle(projectTitle || 'Project', formData.title);
+      setTitleSuggestions(response.data.suggestion || []);
+    } catch (err) {
+      console.error('AI title suggestion error:', err);
+      showNotification('AI temporarily unavailable', 'error');
+    } finally {
+      setAiLoading(prev => ({ ...prev, title: false }));
+    }
+  };
+
+  const handleAIDescriptionSuggestion = async () => {
+    if (!formData.title.trim()) {
+      setError('Enter a task title first');
+      return;
+    }
+
+    try {
+      setAiLoading(prev => ({ ...prev, description: true }));
+      const response = await aiService.generateTaskDescription(
+        projectTitle || 'Project',
+        formData.title,
+        formData.description
+      );
+      setFormData(prev => ({ ...prev, description: response.data.suggestion }));
+      showNotification('AI description generated!', 'success');
+    } catch (err) {
+      console.error('AI description suggestion error:', err);
+      showNotification('AI temporarily unavailable', 'error');
+    } finally {
+      setAiLoading(prev => ({ ...prev, description: false }));
+    }
+  };
+
+  const selectTitleSuggestion = (suggestion) => {
+    setFormData(prev => ({ ...prev, title: suggestion }));
+    setTitleSuggestions([]);
+    setError('');
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -142,22 +192,79 @@ const CreateTaskModal = ({ onClose, onSuccess, projectId, teamMembers }) => {
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Task Title <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleChange}
-                  placeholder="e.g., Build user authentication API"
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
-                  required
-                  maxLength={200}
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    name="title"
+                    value={formData.title}
+                    onChange={handleChange}
+                    placeholder="e.g., Build user authentication API"
+                    className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+                    required
+                    maxLength={200}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAITitleSuggestion}
+                    disabled={aiLoading.title}
+                    className="px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap"
+                    title="Get AI title suggestions"
+                  >
+                    {aiLoading.title ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        AI...
+                      </>
+                    ) : (
+                      <>
+                        ✨ AI
+                      </>
+                    )}
+                  </button>
+                </div>
+                
+                {/* AI Title Suggestions */}
+                {titleSuggestions.length > 0 && (
+                  <div className="mt-2 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                    <p className="text-xs font-semibold text-purple-700 mb-2">AI Suggestions - Click to use:</p>
+                    <div className="space-y-1">
+                      {titleSuggestions.map((suggestion, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => selectTitleSuggestion(suggestion)}
+                          className="w-full text-left px-3 py-2 bg-white border border-purple-300 rounded hover:bg-purple-100 transition-colors text-sm"
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Description */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Description
+                <label className="flex items-center justify-between text-sm font-semibold text-gray-700 mb-2">
+                  <span>Description</span>
+                  <button
+                    type="button"
+                    onClick={handleAIDescriptionSuggestion}
+                    disabled={aiLoading.description}
+                    className="text-xs px-3 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                    title="Generate AI description"
+                  >
+                    {aiLoading.description ? (
+                      <>
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        ✨ Generate with AI
+                      </>
+                    )}
+                  </button>
                 </label>
                 <textarea
                   name="description"

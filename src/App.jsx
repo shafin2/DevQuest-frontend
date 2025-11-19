@@ -4,6 +4,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import MainLayout from './components/layout/MainLayout';
 import AuthLayout from './components/layout/AuthLayout';
 import ProtectedRoute from './components/ProtectedRoute';
+import FloatingChatbot from './components/FloatingChatbot';
 
 // Public pages
 import LandingPage from './pages/LandingPage';
@@ -32,6 +33,7 @@ function App() {
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <Router>
         <AuthProvider>
+          <FloatingChatbot />
           <Routes>
             {/* Routes with Main Layout (Navbar + Footer) */}
             <Route element={<MainLayout />}>
