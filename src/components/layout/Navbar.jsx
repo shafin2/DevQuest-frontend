@@ -1,14 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { projectService } from '../../services/projectService';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isDoctorsDropdownOpen, setIsDoctorsDropdownOpen] = useState(false);
+  const [inviteCount, setInviteCount] = useState(0);
   const profileRef = useRef(null);
   const doctorsDropdownRef = useRef(null);
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout, isAuthenticated, isPM, isDeveloper } = useAuth();
   const navigate = useNavigate();
 
   // Close dropdown when clicking outside
@@ -25,6 +27,26 @@ const Navbar = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Fetch invite count for PMs and Developers
+  useEffect(() => {
+    const fetchInviteCount = async () => {
+      if (isAuthenticated && (isPM || isDeveloper)) {
+        try {
+          const response = await projectService.getMyInvites();
+          setInviteCount(response.data.invites.length);
+        } catch (error) {
+          console.error('Failed to fetch invite count:', error);
+        }
+      }
+    };
+
+    fetchInviteCount();
+    
+    // Poll for new invites every 60 seconds
+    const interval = setInterval(fetchInviteCount, 60000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated, isPM, isDeveloper]);
 
   const handleLogout = async () => {
     await logout();
@@ -59,6 +81,17 @@ const Navbar = () => {
                 </Link>
                 <Link to="/projects" className="text-gray-900 hover:text-indigo-600 transition-colors font-medium">
                   Projects
+                </Link>
+                <Link to="/leaderboard" className="text-gray-900 hover:text-indigo-600 transition-colors font-medium">
+                  🏆 Leaderboard
+                </Link>
+                <Link to="/invites" className="text-gray-900 hover:text-indigo-600 transition-colors font-medium relative">
+                  Invites
+                  {inviteCount > 0 && (
+                    <span className="absolute -top-1 -right-3 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                      {inviteCount > 9 ? '9+' : inviteCount}
+                    </span>
+                  )}
                 </Link>
                 <Link to="/profile" className="text-gray-900 hover:text-indigo-600 transition-colors font-medium">
                   Profile
@@ -215,6 +248,18 @@ const Navbar = () => {
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Projects
+                  </Link>
+                  <Link
+                    to="/invites"
+                    className="text-gray-900 hover:text-indigo-600 transition-colors font-medium flex items-center"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Invites
+                    {inviteCount > 0 && (
+                      <span className="ml-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                        {inviteCount > 9 ? '9+' : inviteCount}
+                      </span>
+                    )}
                   </Link>
                   <Link
                     to="/profile"

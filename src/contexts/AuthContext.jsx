@@ -1,5 +1,6 @@
 import { createContext, useState, useContext, useEffect } from 'react';
 import { authService } from '../services/authService';
+import { profileService } from '../services/profileService';
 
 const AuthContext = createContext();
 
@@ -87,6 +88,20 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
+  const refreshUser = async () => {
+    try {
+      const response = await profileService.getProfile();
+      if (response.success) {
+        const updatedUser = response.data.user;
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        return updatedUser;
+      }
+    } catch (error) {
+      console.error('Failed to refresh user data:', error);
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -95,6 +110,7 @@ export const AuthProvider = ({ children }) => {
     googleLogin,
     logout,
     updateUser,
+    refreshUser,
     isAuthenticated: !!user,
     isClient: user?.role === 'client',
     isDeveloper: user?.role === 'developer',
